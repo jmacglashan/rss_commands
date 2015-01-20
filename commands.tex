@@ -20,6 +20,7 @@
 
 \usepackage[usenames,dvipsnames]{color}
 \newcommand{\jmnote}[1]{\textcolor{Green}{\textbf{JM: #1}}}
+\newcommand{\stnote}[1]{\textcolor{Blue}{\textbf{ST: #1}}}
 
 
 % PDFINFO for PDFLATEX
@@ -46,26 +47,130 @@
 \maketitle
 
 \begin{abstract}
-As intelligent robots become more prolific, methods to make interaction with the robots more accessible will become increasingly important. Communicating the tasks that a person wants the robot to carry out via natural language and training the robot to ground the natural language through demonstration are especially appealing approaches for interaction since they do not require a technical background. In this work, we present a system that can learn how to ground natural language commands into reward functions from demonstrations of different natural language commands being carried out in the environment.
-Because language is grounded to reward functions, rather than explicit actions that the robot can perform, commands can be high-level and carried out in novel environments autonomously and even transfered to other robots with different actions spaces. We demonstrate that our learned model can both be generalized to novel environments and be transfered to a robot with a different action space than the action space used during training.
+As intelligent robots become more prolific, methods to make
+interaction with the robots more accessible will become increasingly
+important. Communicating the tasks that a person wants the robot to
+carry out via natural language and training the robot to ground the
+natural language through demonstration are especially appealing
+approaches for interaction since they do not require a technical
+background.  However existing approaches map natural language commands
+to robot {\em command languages} that directly express the sequence of
+actions the robot should execute.  This sequence is often specific to
+a particular situation and does not generalize to new situations.  To
+address this problem, we present a system that grounds natural
+language commands into reward functions using demonstrations of
+different natural language commands being carried out in the
+environment.  Because language is grounded to reward functions, rather
+than explicit actions that the robot can perform, commands can be
+high-level and carried out in novel environments autonomously and even
+transfered to other robots with different actions spaces. We
+demonstrate that our learned model can both be generalized to novel
+environments and be transfered to a robot with a different action
+space than the action space used during training.
 \end{abstract}
 
 \IEEEpeerreviewmaketitle
 
 \section{Introduction}
-For robots and other intelligent agents to be useful to the general public, they need to be able to autonomously carry out complex tasks. However, it is equally important for humans to be able to communicate a desired complex task to an agent, ideally using natural language commands instead of a formal machine-oriented task representation. In this work, we present novel methods for training an agent to learn the groundings of natural language commands to high-level task descriptions using training data that consists of pairs of natural language commands and demonstrations of the command being executed. While data that paired the actual task representation with the natural language commands would be a more direct and easier learning problem, allowing data to be provided by demonstration is more user friendly since providing demonstrations requires far less technical knowledge of the internal task representations. To learn groundings to task descriptions from example demonstrations, we introduce a generative model of tasks, behavior, and commands that enables {\em Inverse Reinforcement Learning} (IRL) \cite{ng00} techniques to identify the set of likely tasks intended by each demonstration and use them train the language model with weakly supervised learning. 
+For robots and other intelligent agents to be useful to the general
+public, they need to be able to autonomously carry out complex
+tasks. However, it is equally important for humans to be able to
+communicate a desired complex task to an agent, ideally using natural
+language commands instead of a formal machine-oriented task
+representation.  Previous approaches to interpreting language for
+robots have mapped between natural language and specific planning
+language or feature representations that directly describe the
+sequence of actions the robot should perform~\citep{kollar10,
+  tellex11, matuszek12, matuszek12a, chen11}, but do not generalize well to
+novel environments where the sequence of actions to carry out the same
+task may be very different.
 
-Our task model represents task descriptions as abstract \emph{Markov decision process reward functions} that are defined using propositional features of the world. Defining tasks as abstract reward functions is useful because reward functions can induce complex multi-step behavior without having to specify the steps of that behavior. As a result, the natural language commands can be quite general. For instance, the command
-``bring me a cup of coffee'' would give rise to a reward function that motivates the agent to choose steps for getting the coffee and bringing it to the user, without the user specifying any of those details in the command. A significant advantage of this generality compared to grounding language to actions the agent can perform is that the same command can be given in a variety of different environments. Furthermore, training can be performed with one robot and then transferred to different robot that has different primitive actions as long as the high-level representation of the task is consistent.
+To address this problem, we present novel methods for training an
+agent to learn the groundings of natural language commands to
+high-level reward functions using training data that consists of pairs
+of natural language commands and demonstrations of the command being
+executed.  While data that paired the actual task representation with
+the natural language commands would be a more direct and easier
+learning problem, allowing data to be provided by demonstration is
+more user friendly since providing demonstrations requires far less
+technical knowledge of the internal task representations. To learn
+groundings to task descriptions from example demonstrations, we
+introduce a generative model of tasks, behavior, and commands that
+enables {\em Inverse Reinforcement Learning} (IRL) \cite{ng00}
+techniques to identify the set of likely tasks intended by each
+demonstration and use them train the language model with weakly
+supervised learning.  Our work is related to the planning-approach
+described by \citet{howard14} but focuses on decision-making under
+uncertainty. 
 
-\jmnote{Stefanie, in addition to the related work section, I imagine here (or perhaps worked into the above paragraph) might be a good place to contrast our approach with existing work; particularly with respect to grounding to reward functions versus actions. Can you write something up about that?}
 
-We investigate two language models: a Bag-of-Words mixture model and the IBM Model 2 machine-translation model~\cite{brown90,brown93}. While we suspect that other language models that incorporate grammar knowledge might yield better performance and robustness, an advantage of these grammar-free models is that they do not require any additional corpus training and can be used with our task and behavior model as is. Furthermore, an advantage of our generative model and approach is that the language model can be replaced with a different language model without much work, if a specific language model is needed for a domain. In future work, we plan to explore the benefits of using more complex language models with our task and behavior model.
 
-We empirically validate our approach with a simulated version of a ``Cleanup World'' domain where an agent may be tasked with going to different rooms or taking certain objects to different rooms. Next we show the learned model can be transfered to an actual robot with a different action space successfully. Two main datasets were created for our domain; one with clean natural language commands generated from an author of the paper to demonstrate a range of tasks and environments that we can support and another that gathered language from untrained Amazon Mechanical Turk (AMT) users designed to elicit varying language. A typical AMT task is to take a star block into an orange painted room; one data instance for this task is the command ``go into tan room and push star into orange room'' with a sequence of states and actions demonstrating the completion of the task. Note that this demonstration consists of many primitive movement actions, but the provided command does not describe each action that the agent needs to take, only the high-level goal. Performance is evaluated using leave-one-out cross validation for each command and we compare results to a baseline that grounds language to actions. We also separately evaluate performance when the test command is given on a set of environments never seen in the training dataset. We found that our task grounding model performs well both when the test environments were the same as the training environments and when the environments were novel. In contrast, the action grounding model is only able to perform well in the known environments and fails in novel environments.
+Our task model represents task descriptions as abstract \emph{Markov
+  decision process reward functions} that are defined using
+propositional features of the world. Defining tasks as abstract reward
+functions is useful because reward functions can induce complex
+multi-step behavior without having to specify the steps of that
+behavior. As a result, the natural language commands can be quite
+general. For instance, the command ``bring me a cup of coffee'' would
+give rise to a reward function that motivates the agent to choose
+steps for getting the coffee and bringing it to the user, without the
+user specifying any of those details in the command. A significant
+advantage of this generality compared to grounding language to actions
+is that the same command can be successfully interpreted by the robot
+in a variety of different environments. Furthermore, training can be
+performed with one robot and then transferred to different robot that
+has different primitive actions as long as the high-level
+representation of the task is consistent.
+
+
+We investigate two language models: a Bag-of-Words mixture model and
+the IBM Model 2 machine-translation
+model~\cite{brown90,brown93}. While we suspect that other language
+models that incorporate grammar knowledge might yield better
+performance and robustness, an advantage of these grammar-free models
+is that they do not require any additional corpus training and can be
+used with our task and behavior model as is. Furthermore, an advantage
+of our generative model and approach is that the language model can be
+replaced with a different language model without much work, if a
+specific language model is needed for a domain. In future work, we
+plan to explore the benefits of using more complex language models
+with our task and behavior model.
+
+We empirically validate our approach with a simulated version of a
+pick-and-place domain where a robot may be tasked with going to
+different rooms or taking certain objects to different rooms.  Our
+simulated results demonstrates that our approach transfers to new
+environments, significantly outputting baselines based on inferring
+actions.  For example, a typical AMT task is to take a star block into
+an orange painted room; one data instance for this task is the command
+``go into tan room and push star into orange room'' with a sequence of
+states and actions demonstrating the completion of the task. Note that
+this demonstration consists of many primitive movement actions, but
+the provided command does not describe each action that the agent
+needs to take, only the high-level goal.  We found that our task
+grounding model performs well both when the test environments were the
+same as the training environments and when the environments were
+novel. In contrast, the action grounding model is only able to perform
+well in the known environments and fails in novel environments.  We
+also demonstrate that the samed learned model which was trained on
+simulated data can be transfered to a physical robot that manipulates
+blocks in the physical world.
+
+
+%% Two main datasets were created for our domain; one with clean natural
+%% language commands generated from an author of the paper to demonstrate
+%% a range of tasks and environments that we can support and another that
+%% gathered language from untrained Amazon Mechanical Turk (AMT) users
+%% designed to elicit varying language. 
+
+%%  Performance is evaluated using leave-one-out cross validation
+%% for each command and we compare results to a baseline that grounds
+%% language to actions. We also separately evaluate performance when the
+%% test command is given on a set of environments never seen in the
+%% training dataset. 
 
 \section{Background}
-To represent tasks, we make use of the {\em Object-oriented Markov Decision Process} (OO-MDP) formalism \cite{diuk08b}. OO-MDPs extend the conventional MDP formalism by providing a rich state representation. MDPs are defined by a five-tuple: (${\cal S}$, ${\cal A}$, ${\cal T}$, ${\cal R}$, ${\cal F}$), where ${\cal S}$ is a set of states of the world; ${\cal A}$ is a set of actions that the agent can take; ${\cal T}$ describes the transition dynamics, which specify the probability of the agent transitioning to each state given the current state and the action taken; ${\cal R}$ is a function specifying the reward received by the agent for each transition; and ${\cal F}$ is a set of terminal states that cause action to cease once reached. The goal of planning in an MDP is to find a {\em policy}---a mapping from states to actions---that maximizes the expected discounted cumulative reward.
+To represent tasks, we make use of the {\em Object-oriented Markov Decision Process} (OO-MDP) formalism \cite{diuk08b} \stnote{because it is well-suited to represent object-based knowledge that can transfer across different environments}. OO-MDPs extend the conventional MDP formalism by providing a rich state representation. MDPs are defined by a five-tuple: (${\cal S}$, ${\cal A}$, ${\cal T}$, ${\cal R}$, ${\cal F}$), where ${\cal S}$ is a set of states of the world; ${\cal A}$ is a set of actions that the agent can take; ${\cal T}$ describes the transition dynamics, which specify the probability of the agent transitioning to each state given the current state and the action taken; ${\cal R}$ is a function specifying the reward received by the agent for each transition; and ${\cal F}$ is a set of terminal states that cause action to cease once reached. The goal of planning in an MDP is to find a {\em policy}---a mapping from states to actions---that maximizes the expected discounted cumulative reward.
 % zzz ML: Should this quantity be added to the definition, then?
 
 An OO-MDP extends the classic MDP formalism by including a set of {\em object classes}, each defined by a set of attributes, and a set of \emph{propositional functions} whose parameters are typed to object classes. A state in an OO-MDP is a set of objects that each belong to one of the possible object classes; each object has its own state, which is represented as a value assignment to the attributes of its associated object class. The propositional functions defined in the OO-MDP are functions of the object states being evaluated. For example, consider a blocks world in which block objects are defined by their position in the world. The propositional function evaluation ${\tt on}(b_1, b_2)$, where $b_1$ and $b_2$ are block objects in a state, returns {\sf true} when the position of $b_1$ is adjacent and above the position of $b_2$ and false otherwise. Although an OO-MDP state is fully defined by the union of objects, these propositional functions provide additional high-level information about the state. In this work, we use propositional functions to define abstract task definitions.  Note that although OO-MDPs provide a rich state representation, any standard MDP planning algorithm can be used for planning in an OO-MDP.
@@ -285,7 +390,7 @@ The propositional functions defined for the OO-MDP include ${\tt agentInRoom}({\
 
 In both studies, the Boltzmann policy parameter $\tau$ was set to $0.005$ and performance was measured using leave-one-out (LOO) cross validation; a prediction was considered correct if the interpretation of the reward function resulted in behavior that achieved the actual goal. 
 
-For a baseline, we compared learning results to a model that grounds language to actions rather than tasks. Because the order of the actions is important, we always paired the baseline with the IBM2 language model. When training the IBM2 model, the action sequence in the demonstration is converted into a machine language sentence in which each word is the name of the action. Note that the action grounding learning problem is in some sense easier than training the task model since the action sequence is always directly observed in the demonstration, whereas in our task grounding model, IRL is needed to perform weakly supervised learning. Inferring an action sequence from a command would generally require searching the action sequence space and finding the most likely sequence from the command or at least using it to bias a planning algorithm's search similar to \jmnote{Mooney paper}. However, we simplify this inference problem greatly by allowing the action grounding model to exploit our task model. Specifically, when inferring an action sequence for a command, the only valid action sequences permitted are those that solve one of the possible grounded tasks and we let the most likely of the possible sequences be the one chosen by the agent.
+For a baseline, we compared learning results to a model that grounds language to actions rather than tasks. Because the order of the actions is important, we always paired the baseline with the IBM2 language model. When training the IBM2 model, the action sequence in the demonstration is converted into a machine language sentence in which each word is the name of the action. Note that the action grounding learning problem is in some sense easier than training the task model since the action sequence is always directly observed in the demonstration, whereas in our task grounding model, IRL is needed to perform weakly supervised learning. Inferring an action sequence from a command would generally require searching the action sequence space and finding the most likely sequence from the command or at least using it to bias a planning algorithm's search similar to \citet{chen11}. However, we simplify this inference problem greatly by allowing the action grounding model to exploit our task model. Specifically, when inferring an action sequence for a command, the only valid action sequences permitted are those that solve one of the possible grounded tasks and we let the most likely of the possible sequences be the one chosen by the agent.
 
 
 
@@ -308,7 +413,7 @@ To prevent contamination of the commands we received, we never provided users wi
 
 After removing labels that did not follow the instructions or which did not describe the task in any capacity, we obtained a dataset of 240 instances. The goal of our work is to be able to give autonomous agents high-level commands that leave the details of how to complete the task as a problem for the agent to solve. However, most of the natural language commands we received included some high-level details of the path the agent followed (\emph{e.g.}, subgoals), rather than only describing the task goal. 
 For example, one such command was ``go through center opening into beige enclosure and get behind star and push it into opening of orange enclosure.'' 
-Although this data is interesting because it tests our model's performance on language that it wasn't intended to model, a dataset that better reflects the problem we were trying to solve is also useful for comparison. Therefore, in addition to this source dataset, we  created a simplified version that omits the text that is extraneous to the task description. 
+Although this data is interesting because it tests our model's performance on language that it was not intended to model, a dataset that better reflects the problem we were trying to solve is also useful for comparison. Therefore, in addition to this source dataset, we  created a simplified version that omits the text that is extraneous to the task description. 
 For instance, the previous example became: ``go through center opening and get behind star and push it into opening of orange enclosure.'' 
 The average command lengths (in words) were $13.57$ and $8.87$ in the original and simplified datasets, respectively.
 
@@ -409,11 +514,39 @@ and puzzle solving and software control \cite{bkr10}.
 % \cite{bkr09,bkr10} 
 and map navigation \cite{vogel10}. However, our goal is to move away from low-level instructions that correspond directly to actions in the environment
 % \cite{bkr09,vogel10} 
-to high-level task descriptions expressed using complex language. 
-Unlike previous approaches that learn word groundings from pairs of natural language instructions and demonstrations of corresponding high level actions
-\cite{tellex14,duvallet2013},
-%SM the above two approaches seems very relevant. duvallet uses Imitation learning, Maybe we want a short description of those approaches.
-our method learns mappings of natural language instructions to task descriptions represented as MDP reward functions, enabling the agent to be autonomous and creative in its behavior. In addition, our generative model allows an investigation of multiple language models that can be used with the task model. Besides the generally used Bag-of-Words model \cite{bkr09,vogel10}, we showed that a word-based statistical machine-translation model provides better results. The idea of using statistical machine translation approaches for semantic parsing was introduced by Wong and Mooney \cite{wong07} in a supervised learning setting. In future work, we plan to move beyond word-based SMT models to grammar-based SMT models such as Synchronous Context-Free Grammars \cite{Wu1997}. 
+to high-level task descriptions expressed using complex language.
+Unlike previous approaches that learn word groundings from pairs of
+natural language instructions and demonstrations of corresponding high
+level actions \cite{tellex14,duvallet2013}, our method learns mappings
+of natural language instructions to task descriptions represented as
+MDP reward functions, enabling the agent to be autonomous and creative
+in its behavior.  \citet{misra14} learns to bridge this gap by filling
+in the gaps when the learned actions do not directly match.  Although
+this approach can improve generalization, our approach by mapping to
+reward functions enables the agent to infer creative solutions to
+problems that it encounters that may not have ever appeared in
+training.  Our work is most closely related to \citet{howard14} which
+maps between language and planning constraints.  Both approaches map
+between language and an abstract, goal-based representations that
+enables creative solutions to problems.  Our approach maps to reward
+functions, enabling general solutions to problems involving planning
+under uncertainty, while \citet{howard14} uses planning constraints
+that specifically focus on fast motion planning and object
+manipulation.  \stnote{James can you read \citet{howard14} and assess
+  what I said about it?  This is the most closely related work that
+  I'm aware of.}
+
+In addition, our generative model allows an investigation of multiple
+language models that can be used with the task model. Besides the
+generally used Bag-of-Words model \cite{bkr09,vogel10}, we showed that
+a word-based statistical machine-translation model provides better
+results. The idea of using statistical machine translation approaches
+for semantic parsing was introduced by Wong and Mooney \cite{wong07}
+in a supervised learning setting, although they map to an action-based
+representation rather than using reward functions. In future work, we
+plan to move beyond word-based SMT models to grammar-based SMT models
+such as Synchronous Context-Free Grammars \cite{Wu1997}.
+
 % zzz could use cite for SCFG...
 
 
