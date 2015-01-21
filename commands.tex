@@ -13,6 +13,9 @@
 \usepackage{algorithm}
 \usepackage{amsmath}
 \usepackage{booktabs}
+\usepackage{caption}
+\usepackage{subcaption}
+
 
 \renewcommand{\algorithmicrequire}{\textbf{Input:}}
 
@@ -81,7 +84,7 @@ representation.  Previous approaches to interpreting language for
 robots have mapped between natural language and specific planning
 language or feature representations that directly describe the
 sequence of actions the robot should perform~\citep{kollar10,
-  tellex11, matuszek12, matuszek12a, chen11}, but do not generalize well to
+  tellex11, matuszek12, matuszek12a, mooney11}, but do not generalize well to
 novel environments where the sequence of actions to carry out the same
 task may be very different.
 
@@ -100,8 +103,10 @@ enables {\em Inverse Reinforcement Learning} (IRL) \cite{ng00}
 techniques to identify the set of likely tasks intended by each
 demonstration and use them train the language model with weakly
 supervised learning.  Our work is related to the planning-approach
-described by \citet{howard14} but focuses on decision-making under
-uncertainty. 
+described by \citet{howard14} but focuses on grounding
+language to tasks best represented by MDP reward functions and planning
+under uncertainty, whereas Howard et al. focus on grounding 
+language to planning constraints for motion planning.
 
 
 
@@ -140,7 +145,7 @@ We empirically validate our approach with a simulated version of a
 pick-and-place domain where a robot may be tasked with going to
 different rooms or taking certain objects to different rooms.  Our
 simulated results demonstrates that our approach transfers to new
-environments, significantly outputting baselines based on inferring
+environments, significantly outperforming baselines based on inferring
 actions.  For example, a typical AMT task is to take a star block into
 an orange painted room; one data instance for this task is the command
 ``go into tan room and push star into orange room'' with a sequence of
@@ -153,8 +158,8 @@ same as the training environments and when the environments were
 novel. In contrast, the action grounding model is only able to perform
 well in the known environments and fails in novel environments.  We
 also demonstrate that the samed learned model which was trained on
-simulated data can be transfered to a physical robot that manipulates
-blocks in the physical world.
+simulated data can be transfered to a physical robot with a different 
+action space that manipulates blocks in the physical world.
 
 
 %% Two main datasets were created for our domain; one with clean natural
@@ -170,7 +175,7 @@ blocks in the physical world.
 %% training dataset. 
 
 \section{Background}
-To represent tasks, we make use of the {\em Object-oriented Markov Decision Process} (OO-MDP) formalism \cite{diuk08b} \stnote{because it is well-suited to represent object-based knowledge that can transfer across different environments}. OO-MDPs extend the conventional MDP formalism by providing a rich state representation. MDPs are defined by a five-tuple: (${\cal S}$, ${\cal A}$, ${\cal T}$, ${\cal R}$, ${\cal F}$), where ${\cal S}$ is a set of states of the world; ${\cal A}$ is a set of actions that the agent can take; ${\cal T}$ describes the transition dynamics, which specify the probability of the agent transitioning to each state given the current state and the action taken; ${\cal R}$ is a function specifying the reward received by the agent for each transition; and ${\cal F}$ is a set of terminal states that cause action to cease once reached. The goal of planning in an MDP is to find a {\em policy}---a mapping from states to actions---that maximizes the expected discounted cumulative reward.
+To represent tasks, we make use of the {\em Object-oriented Markov Decision Process} (OO-MDP) formalism \cite{diuk08b} because it is well-suited to represent object-based knowledge that can transfer across different environments. OO-MDPs extend the conventional MDP formalism by providing a rich state representation. MDPs are defined by a five-tuple: (${\cal S}$, ${\cal A}$, ${\cal T}$, ${\cal R}$, ${\cal F}$), where ${\cal S}$ is a set of states of the world; ${\cal A}$ is a set of actions that the agent can take; ${\cal T}$ describes the transition dynamics, which specify the probability of the agent transitioning to each state given the current state and the action taken; ${\cal R}$ is a function specifying the reward received by the agent for each transition; and ${\cal F}$ is a set of terminal states that cause action to cease once reached. The goal of planning in an MDP is to find a {\em policy}---a mapping from states to actions---that maximizes the expected discounted cumulative reward.
 % zzz ML: Should this quantity be added to the definition, then?
 
 An OO-MDP extends the classic MDP formalism by including a set of {\em object classes}, each defined by a set of attributes, and a set of \emph{propositional functions} whose parameters are typed to object classes. A state in an OO-MDP is a set of objects that each belong to one of the possible object classes; each object has its own state, which is represented as a value assignment to the attributes of its associated object class. The propositional functions defined in the OO-MDP are functions of the object states being evaluated. For example, consider a blocks world in which block objects are defined by their position in the world. The propositional function evaluation ${\tt on}(b_1, b_2)$, where $b_1$ and $b_2$ are block objects in a state, returns {\sf true} when the position of $b_1$ is adjacent and above the position of $b_2$ and false otherwise. Although an OO-MDP state is fully defined by the union of objects, these propositional functions provide additional high-level information about the state. In this work, we use propositional functions to define abstract task definitions.  Note that although OO-MDPs provide a rich state representation, any standard MDP planning algorithm can be used for planning in an OO-MDP.
@@ -390,7 +395,7 @@ The propositional functions defined for the OO-MDP include ${\tt agentInRoom}({\
 
 In both studies, the Boltzmann policy parameter $\tau$ was set to $0.005$ and performance was measured using leave-one-out (LOO) cross validation; a prediction was considered correct if the interpretation of the reward function resulted in behavior that achieved the actual goal. 
 
-For a baseline, we compared learning results to a model that grounds language to actions rather than tasks. Because the order of the actions is important, we always paired the baseline with the IBM2 language model. When training the IBM2 model, the action sequence in the demonstration is converted into a machine language sentence in which each word is the name of the action. Note that the action grounding learning problem is in some sense easier than training the task model since the action sequence is always directly observed in the demonstration, whereas in our task grounding model, IRL is needed to perform weakly supervised learning. Inferring an action sequence from a command would generally require searching the action sequence space and finding the most likely sequence from the command or at least using it to bias a planning algorithm's search similar to \citet{chen11}. However, we simplify this inference problem greatly by allowing the action grounding model to exploit our task model. Specifically, when inferring an action sequence for a command, the only valid action sequences permitted are those that solve one of the possible grounded tasks and we let the most likely of the possible sequences be the one chosen by the agent.
+For a baseline, we compared learning results to a model that grounds language to actions rather than tasks. Because the order of the actions is important, we always paired the baseline with the IBM2 language model. When training the IBM2 model, the action sequence in the demonstration is converted into a machine language sentence in which each word is the name of the action. Note that the action grounding learning problem is in some sense easier than training the task model since the action sequence is always directly observed in the demonstration, whereas in our task grounding model, IRL is needed to perform weakly supervised learning. Inferring an action sequence from a command would generally require searching the action sequence space and finding the most likely sequence from the command or at least using it to bias a planning algorithm's search similar to \citet{mooney11}. However, we simplify this inference problem greatly by allowing the action grounding model to exploit our task model. Specifically, when inferring an action sequence for a command, the only valid action sequences permitted are those that solve one of the possible grounded tasks and we let the most likely of the possible sequences be the one chosen by the agent.
 
 
 
@@ -493,7 +498,10 @@ Model & Expert & Expert-MD \\ \midrule
 
 
 \subsection{Transferring the Learned Model to a Different Robot}
-One of the strengths of grounding language to high-level tasks is that the learned model can be transferred to different robots with a different set of actions, because each robot can plan independently for each reward function. We demonstrate this transferability after training in our simulated version of the Cleanup World by taking the learned model from our simulated domain and executing it on an actual mobile robot whose action space consists of three actions: turning 90 degrees clockwise or counterclockwise and moving forward a fixed distance, rather than moving north, south, east, or west as in our simulator in which training was performed. To execute a policy, the robot needed to know its location and the location of block objects in the world, which we determined by using a motion tracking camera system. A video of the robot executing the AMT gathered command ``'' can be found at \jmnote{video URL and command used} and an image of it following a command is shown in Figure \ref{}. 
+One of the strengths of grounding language to high-level tasks is that the learned model can be transferred to different robots with a different set of actions, because each robot can plan independently for each reward function. We demonstrate this transferability after training in our simulated version of the Cleanup World by taking the learned model from our simulated domain and executing it on an actual mobile robot whose action space consists of three actions: turning 90 degrees clockwise or counterclockwise and moving forward a fixed distance, rather than moving north, south, east, or west as in our simulator in which training was performed. To execute a policy, the robot needed to know its location and the location of block objects in the world, which we determined by using a motion tracking camera system. A video of the robot executing the AMT gathered command ``bring star to beige room'' can be found online\footnote{https://vid.me/Wfxx} and images from it following the command are shown in Figure~\ref{fig:real}.
+
+This demonstration highlights another advantage of our approach to grounding to tasks instead of actions: the real world introduces a number of sources of noise due to how the actuators work and how perception is managed that make following an action sequence ineffective. In Figure~\ref{fig:real2} we find that the robot has overshot positioning itself directly behind the block. Even if we had successfully trained our model to ground to actions in this robot's action space, this failure in outcome expectation would cause the rest of the action sequence to fail to achieive the goal. Instead, because our model grounds commands to tasks and follows a corresponding policy, we find in Figure~\ref{fig:real3} that the robot has corrected itself and then is able to complete the task (Figure~\ref{fig:real4}).
+
 
 
 \section{Related Work}
@@ -506,7 +514,7 @@ Our work relates to the broad class of methods for grounded language learning th
 Instead of using annotated training data consisting of sentences and their corresponding semantic representations~\cite{kate06,wong07,zettlemoyer05,zettlemoyer09}, 
 most of these approaches leverage non-linguistic information from a situated context as their primary source of supervision. 
 
-These approaches have been applied to various tasks, the one  closest to ours being interpreting verbal commands in the context of navigational instructions~\cite{vogel10,mooney11,grubb11}, robot manipulation \cite{duvallet2013,tellex14},
+These approaches have been applied to various tasks, the one  closest to ours being interpreting verbal commands in the context of navigational instructions~\cite{vogel10,mooney11,grubb11}, robot manipulation \cite{duvallet2013,tellex14,howard14},
 %\cite{tellex11,duvallet2013,tellex14}
 and puzzle solving and software control \cite{bkr10}.
 %\cite{bkr09,bkr10}.
@@ -528,13 +536,10 @@ problems that it encounters that may not have ever appeared in
 training.  Our work is most closely related to \citet{howard14} which
 maps between language and planning constraints.  Both approaches map
 between language and an abstract, goal-based representations that
-enables creative solutions to problems.  Our approach maps to reward
-functions, enabling general solutions to problems involving planning
-under uncertainty, while \citet{howard14} uses planning constraints
-that specifically focus on fast motion planning and object
-manipulation.  \stnote{James can you read \citet{howard14} and assess
-  what I said about it?  This is the most closely related work that
-  I'm aware of.}
+enables creative solutions to problems. However, Howard et al.
+focus on mapping to planning constraints for motion planning, whereas our 
+approach maps to reward functions that can represent different classes
+of problems and handle planning under uncertainty.
 
 In addition, our generative model allows an investigation of multiple
 language models that can be used with the task model. Besides the
@@ -546,6 +551,36 @@ in a supervised learning setting, although they map to an action-based
 representation rather than using reward functions. In future work, we
 plan to move beyond word-based SMT models to grammar-based SMT models
 such as Synchronous Context-Free Grammars \cite{Wu1997}.
+
+\begin{figure*}
+        \centering
+        \begin{subfigure}[b]{0.23\textwidth}
+                \includegraphics[width=\textwidth]{images/s1}
+                \caption{}
+                \label{fig:real1}
+        \end{subfigure}%
+        ~ %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc.
+          %(or a blank line to force the subfigure onto a new line)
+        \begin{subfigure}[b]{0.23\textwidth}
+                \includegraphics[width=\textwidth]{images/s2}
+                \caption{}
+                \label{fig:real2}
+        \end{subfigure}
+        ~ %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc.
+          %(or a blank line to force the subfigure onto a new line)
+        \begin{subfigure}[b]{0.23\textwidth}
+                \includegraphics[width=\textwidth]{images/s3}
+                \caption{}
+                \label{fig:real3}
+        \end{subfigure}
+        ~
+         \begin{subfigure}[b]{0.23\textwidth}
+                \includegraphics[width=\textwidth]{images/s4}
+                \caption{}
+                \label{fig:real4}
+        \end{subfigure}
+        \caption{Images from our mobile robot executing the command ``bring star to beige room.'' The room colors are hard coded to the different regions outlined by the walls and the orange block is mapped to the ``star'' object AMT users were shown. The initial state is shown in image~(a). Image~(b) shows that the robot overshot positioning itself behind the block due to noise in the real world. In image~(c) the robot has corrected its position and it ends successfully in image~(c) after pushing the block into the correct room.} \label{fig:real}
+\end{figure*}
 
 % zzz could use cite for SCFG...
 
