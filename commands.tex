@@ -176,6 +176,7 @@ action space that manipulates blocks in the physical world.
 %% test command is given on a set of environments never seen in the
 %% training dataset. 
 
+
 \section{Background}
 To represent tasks, we make use of the {\em Object-oriented Markov Decision Process} (OO-MDP) formalism \cite{diuk08b} because it is well-suited to represent object-based knowledge that can transfer across different environments. OO-MDPs extend the conventional MDP formalism by providing a rich state representation. MDPs are defined by a five-tuple: (${\cal S}$, ${\cal A}$, ${\cal T}$, ${\cal R}$, ${\cal F}$), where ${\cal S}$ is a set of states of the world; ${\cal A}$ is a set of actions that the agent can take; ${\cal T}$ describes the transition dynamics, which specify the probability of the agent transitioning to each state given the current state and the action taken; ${\cal R}$ is a function specifying the reward received by the agent for each transition; and ${\cal F}$ is a set of terminal states that cause action to cease once reached. The goal of planning in an MDP is to find a {\em policy}---a mapping from states to actions---that maximizes the expected discounted cumulative reward.
 % zzz ML: Should this quantity be added to the definition, then?
