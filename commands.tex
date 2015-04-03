@@ -15,7 +15,7 @@
 \usepackage{booktabs}
 \usepackage{caption}
 \usepackage{subcaption}
-
+\usepackage{lipsum}
 
 \renewcommand{\algorithmicrequire}{\textbf{Input:}}
 
@@ -25,6 +25,13 @@
 \newcommand{\jmnote}[1]{\textcolor{Green}{\textbf{JM: #1}}}
 \newcommand{\stnote}[1]{\textcolor{Blue}{\textbf{ST: #1}}}
 
+
+\newcommand\blfootnote[1]{%
+  \begingroup
+  \renewcommand\thefootnote{}\footnote{#1}%
+  \addtocounter{footnote}{-1}%
+  \endgroup
+}
 
 % PDFINFO for PDFLATEX
 % Uncomment and complete the following for metadata (your paper must compile with PDFLATEX)
@@ -38,8 +45,18 @@
 
 
 
+
 \title{Grounding English Commands to Reward Functions}
-\author{}
+\author{James MacGlashan$^*$
+\and Monica Babe\c{s}-Vroman$^+$
+\and Marie desJardins$^{\ddagger}$
+\and Michael Littman$^*$
+\and Smaranda Muresan$^{\S}$
+\and Shawn Squire$^{\ddagger}$
+\and Stefanie Tellex$^*$
+\and Dilip Arumugam$^*$
+\and Lei Yang$^\dagger$
+}
 
 
 
@@ -75,77 +92,129 @@ space than the action space used during training.
 \IEEEpeerreviewmaketitle
 
 \section{Introduction}
+\blfootnote{$^*$ Computer Science Department, Brown University\\
+$^+$ Computer Science Department, Rutgers University\\
+$\ddagger$ Department of Computer Science and Electrical Engineering, University of Maryland, Baltimore County\\
+$^{\S}$ Department of Computer Science, Columbia University\\
+$^\dagger$ School of Software, Tsinghua University
+}
 For robots and other intelligent agents to be useful to the general
 public, they need to be able to autonomously carry out complex
 tasks. However, it is equally important for humans to be able to
 communicate a desired complex task to an agent, ideally using natural
 language commands instead of a formal machine-oriented task
-representation.  Previous approaches to interpreting language for
+representation. In this work, we presented a method for learning
+how to ground natural language commands into high-level reward functions
+from demonstrations of the commands being carried out.
+
+Previous approaches to interpreting language for
 robots have mapped between natural language and specific planning
 languages or feature representations that directly describe the
 sequence of actions the robot should perform~\citep{kollar10,
-  tellex11, matuszek12, matuszek12a, chen11}, but do not generalize well to
-novel environments where the sequence of actions to carry out the same
-task may be very different or when stochasticity in the environment
-can cause an otherwise appropriate action sequence to fail to achieve
-the intended goal.
+  tellex11, matuszek12, matuszek12a, chen11}. In effect,
+these approaches enable teleoperation though language.  
+However, in domains where a robot is expected to assist
+a human, requiring the human to uniquely specify the action
+sequence necessary to complete a task is an undesirable burden, especially
+if the environment changes over use cases requiring the user to specify
+new action sequences to solve the same task, or if stochasticity in the
+environment or actions can cause a specified action sequence to fail to complete
+the task. Ideally, a human would specify
+a task to complete with language and let the robot use a planner to be creative
+in its solutions to the task and autonomously resolve any unforeseen
+outcomes during execution. For example, the command ``bring me a cup
+of coffee'' should give rise to a goal that motivates the robot to
+choose steps for getting to---or making, if necessary---the coffee and 
+brining it to the user, without
+the user specifying any of those details in the command. Another advantage
+of this task-based grounding is that a language model grounded to tasks
+can be easily transfered to different robots with different action sets,
+since the agent will use a planner to determine the correct actions.
 
-To address this problem, we present a novel method for training an
-agent to learn the groundings of natural language commands to
-high-level reward functions using training data that consists of pairs
-of natural language commands and demonstrations of the command being
-executed.  While data that paired the actual task representation with
-the natural language commands would be a more direct and easier
-learning problem, allowing data to be provided by demonstration is
-more user-friendly, since providing demonstrations requires far less
-technical knowledge of the internal task representations. To learn
-groundings to task descriptions from example demonstrations, we
-introduce a generative model of tasks, behavior, and commands that
-enables {\em Inverse Reinforcement Learning} (IRL) \cite{ng00}
-techniques to identify the set of likely tasks intended by each
-demonstration and use them to train the language model with weakly
-supervised learning.  Our work is related to the planning approach
-described by \citet{howard14}. However, our work focuses on grounding language to
-tasks best represented by MDP reward functions and planning under
-uncertainty, whereas \citet{howard14} focus on grounding language to
+Our work is related to the planning approach described by \citet{howard14}. 
+However, our work focuses
+on grounding language to tasks best represented by Markov decision process (MDP)
+reward functions
+and planning under uncertainty, whereas \citet{howard14} focus on grounding language to
 planning constraints for motion planning.
 
+One way to learn groundings to reward functions would be to train a semantic
+language model with a dataset consisting of pairs of natural language commands
+and the corresponding reward function description they entail. However,
+providing such a dataset requires a trainer to have a technical understanding
+of the task and state representation of the robot. A more user-friendly approach
+to training is for the user to develop a dataset of commands paired with
+demonstrations of the command being carried out. This approach would also
+enable an iterative interactive training paradigm in which a user can easily grow
+the robot's model by providing new commands and demonstrations.
+However, unlike previous approach that ground language to action sequences,
+learning reward function groundings from demonstrations requires
+grounding to a latent reward function variable not expressed in the data.
+
+Our work has two primary contributions. First, a generative model of tasks, behavior, 
+and language; and second, a weakly supervised learning algorithm that uses
+our generative model and a version of inverse reinforcement learning (IRL)~\cite{ng00}
+to learn mappings from language to latent reward functions 
+from a dataset consisting of natural language commands and demonstrations
+of the commands being carried out in the world.
 
 
-Our task model represents task descriptions as abstract \emph{Markov
-  decision process reward functions} that are defined using
-propositional features of the world. Defining tasks as abstract reward
-functions is useful because reward functions can induce complex
-multi-step behavior without having to specify the steps of that
-behavior. As a result, the natural language commands can be quite
-general. For instance, the command ``bring me a cup of coffee'' would
-give rise to a reward function that motivates the agent to choose
-steps for getting the coffee and bringing it to the user, without the
-user specifying any of those details in the command. A significant
-advantage of this generality compared to grounding language to actions
-is that the same command can be successfully interpreted by the robot
-in a variety of different environments.  When the robot encounters
-obstacles, such as a door being locked, it is free to infer creative
-solutions to the problem using all the machinery at its disposal, such
-as hierarchical actions~\citep{sutton99} or action
-% replace abel14 with icaps paper if accepted
-priors~\citep{abel14}. Furthermore, training can be
-performed with one robot or even in simulation and then transferred to
-a different robot that has different primitive actions as long as the
-high-level representation of the task is consistent.
+%To address this problem, we present a novel method for training an
+%agent to learn the groundings of natural language commands to
+%high-level reward functions using training data that consists of pairs
+%of natural language commands and demonstrations of the command being
+%executed.  While data that paired the actual task representation with
+%the natural language commands would be a more direct and easier
+%learning problem, allowing data to be provided by demonstration is
+%more user-friendly, since providing demonstrations requires far less
+%technical knowledge of the internal task representations. To learn
+%groundings to task descriptions from example demonstrations, we
+%introduce a generative model of tasks, behavior, and commands that
+%enables {\em Inverse Reinforcement Learning} (IRL) \cite{ng00}
+%techniques to identify the set of likely tasks intended by each
+%demonstration and use them to train the language model with weakly
+%supervised learning.  Our work is related to the planning approach
+%described by \citet{howard14}. However, our work focuses on grounding language to
+%tasks best represented by MDP reward functions and planning under
+%uncertainty, whereas \citet{howard14} focus on grounding language to
+%planning constraints for motion planning.%
+%
+%
+
+%Our task model represents task descriptions as abstract \emph{Markov
+%  decision process reward functions} that are defined using
+%propositional features of the world. Defining tasks as abstract reward
+%functions is useful because reward functions can induce complex
+%multi-step behavior without having to specify the steps of that
+%behavior. As a result, the natural language commands can be quite
+%general. For instance, the command ``bring me a cup of coffee'' would
+%give rise to a reward function that motivates the agent to choose
+%steps for getting the coffee and bringing it to the user, without the
+%user specifying any of those details in the command. A significant
+%advantage of this generality compared to grounding language to actions
+%is that the same command can be successfully interpreted by the robot
+%in a variety of different environments.  When the robot encounters
+%obstacles, such as a door being locked, it is free to infer creative
+%solutions to the problem using all the machinery at its disposal, such
+%as hierarchical actions~\citep{sutton99} or action
+%% replace abel14 with icaps paper if accepted
+%priors~\citep{abel14}. Furthermore, training can be
+%performed with one robot or even in simulation and then transferred to
+%a different robot that has different primitive actions as long as the
+%high-level representation of the task is consistent.
 
 
-We investigate two language models: a Bag-of-Words mixture model and
-the IBM Model 2 used in statistical machine-translation~\cite{brown90,brown93}. While we suspect that other language
-models that incorporate grammatical knowledge might yield better
-performance and robustness, an advantage of these grammar-free models
-is that they do not require any additional corpus training and can be
-used with our task and behavior model as is. Furthermore, an advantage
-of our generative model and approach is that the language model can be
-replaced with a different language model without much work, if a
-specific language model is needed for a domain. In future work, we
-plan to explore the benefits of using more complex language models
-with our task and behavior model.
+%We investigate two language models: a Bag-of-Words mixture model and
+%the IBM Model 2 used in statistical machine-translation~\cite{brown90,brown93}. While we suspect that other language
+%models that incorporate grammatical knowledge might yield better
+%performance and robustness, an advantage of these grammar-free models
+%is that they do not require any additional corpus training and can be
+%used with our task and behavior model as is. Furthermore, an advantage
+%of our generative model and approach is that the language model can be
+%replaced with a different language model without much work, if a
+%specific language model is needed for a domain. In future work, we
+%plan to explore the benefits of using more complex language models
+%with our task and behavior model.
 
 We empirically validate our approach with a simulated version of a
 pick-and-place domain where a robot may be tasked with going to
@@ -157,10 +226,11 @@ actions.  For example, a typical task is to take a star block into an
 orange painted room; one data instance for this task, collected from
 an Amazon Mechanical Turk (AMT) user, is the command ``go into tan
 room and push star into orange room'' with a sequence of states and
-actions demonstrating the completion of the task. Note that this
-demonstration consists of many primitive movement actions, but the
-provided command does not describe each action that the agent needs to
-take, only the high-level goal.  We found that our task-grounding
+actions demonstrating the completion of the task. %Note that this
+%demonstration consists of many primitive movement actions, but the
+%provided command does not describe each action that the agent needs to
+%take, only the high-level goal.  
+We found that our task-grounding
 model performs well both when the test environments were the same as
 the training environments and when the environments were novel. In
 contrast, the action-grounding model is only able to perform well in
@@ -184,33 +254,30 @@ Figure~\ref{fig:real}.
 %% training dataset. 
 
 
-\section{Background}
+\section{Object-oriented Markov Decision Processes}
 To represent tasks, we make use of the {\em Object-oriented Markov Decision Process} (OO-MDP) formalism \cite{diuk08b} because it is well-suited to represent object-based knowledge for planning under uncertainty that can transfer across different environments. OO-MDPs extend the conventional MDP formalism by providing a rich state representation that factors around objects. MDPs are defined by a five-tuple: (${\cal S}$, ${\cal A}$, ${\cal T}$, ${\cal R}$, ${\cal F}$), where ${\cal S}$ is a set of states of the world; ${\cal A}$ is a set of actions that the agent can take; ${\cal T}$ describes the transition dynamics, which specify the probability of the agent transitioning to each state given the current state and the action taken; ${\cal R}$ is a function specifying the reward received by the agent for each transition; and ${\cal F}$ is a set of terminal states that cause action to cease once reached. The goal of planning in an MDP is to find a {\em policy}---a mapping from states to actions---that maximizes the expected discounted cumulative reward.
 % zzz ML: Should this quantity be added to the definition, then?
 
-An OO-MDP extends the classic MDP formalism by including a set of {\em object classes}, each defined by a set of attributes, and a set of \emph{propositional functions} whose parameters are typed to object classes. A state in an OO-MDP is a set of objects that each belong to one of the possible object classes; each object has its own state, which is represented as a value assignment to the attributes of its associated object class. The propositional functions defined in the OO-MDP are functions of the object states being evaluated. For example, consider a blocks world in which block objects are defined by their position in the world. The propositional function evaluation ${\tt on}(b_1, b_2)$, where $b_1$ and $b_2$ are block objects in a state, returns {\sf true} when the position of $b_1$ is adjacent and above the position of $b_2$ and false otherwise. Although an OO-MDP state is fully defined by the union of objects, these propositional functions provide additional high-level information about the state. In this work, we use propositional functions to define abstract task definitions.  Note that although OO-MDPs provide a rich state representation, any standard MDP planning algorithm can be used for planning in an OO-MDP. OO-MDPs are particularly well-suited for robotic problems because they explicitly represent objects and generalize knowledge across different object instances. %\stnote{I added this sentence; James and Michael please vet: 
+An OO-MDP extends the classic MDP formalism by including a set of {\em object classes}, each defined by a set of attributes, and a set of \emph{propositional functions} whose parameters are typed to object classes. A state in an OO-MDP is a set of objects that each belong to one of the possible object classes; each object has its own state, which is represented as a value assignment to the attributes of its associated object class. The propositional functions defined in the OO-MDP are functions of the object states being evaluated. For example, consider a blocks world in which block objects are defined by their position in the world. The propositional function evaluation ${\tt on}(b_1, b_2)$, where $b_1$ and $b_2$ are block objects in a state, returns {\sf true} when the position of $b_1$ is adjacent and above the position of $b_2$ and {\sf false} otherwise. 
+
+%Although an OO-MDP state is fully defined by the union of objects, these propositional functions provide additional high-level information about the state. 
+These propositional functions enable an OO-MDP to provide high-level symbolic information about states that are inherently non-symbolic (e.g., spatial or continuous valued), which is often required for robotics domains. Because OO-MDP states are defined by a set of objects, different states in the same OO-MDP can also represent different environments by changing which objects are present. Since propositional functions operate on objects within a state, the propositional functions generalize across environments. In this work, we use OO-MDP propositional functions to define abstract task definitions, which enables environment-independent symbolic tasks useful for language grounding to be defined for a variety of different kinds of state spaces that may not be symbolic themselves.
+
+
+%For example, different home environments can be represented in differnet states in the same OO-MDP definition in which OO-MDP objects define rooms, the robot, people, and moveable objects by changing which objects appear in the state. 
+
+
+
+
+  %Note that although OO-MDPs provide a rich state representation, any standard MDP planning algorithm can be used for planning in an OO-MDP. OO-MDPs are particularly well-suited for robotic problems because they explicitly represent objects and generalize knowledge across different object instances. %\stnote{I added this sentence; James and Michael please vet: 
 %OO-MDPs are particularly well-suited for robotic problems because they explicitly represent objects and generalize knowledge across different object instances.}
 
 
 %SM I like having the simplified task model to make the argument for the full model. However, to save space maybe is best to introduce directly the Full task model and when you describe the behavior use the definition here.  
 %JM done
-\section{The Task And Behavior Model}
-\begin{figure}[tbp]
-\begin{center}
-\includegraphics[width=.7\columnwidth]{images/taskModel}
-\caption{The generative task model, with arrows indicating conditional probabilities. $S$ is the current state and is an input to the model. $L$ is the lifted task, which specifies the kind of problem to solve. $T$ is the grounded tasks, which binds specific objects to the lifted task making for a well defined problem to solve. $B$ is the behavior the agent follows to complete task $T$. $C$ is the object-binding constraints, which specify properties about the bound objects in $T$ that a user might refer to in their language to specify the objects. The language model is a parameter of our overall generative model.}
-% An arrow from $X\rightarrow Y$ indicates that $Y$'s probability distribution is conditionally dependent on $X$.}
-\label{fig:tm}
-\end{center}
-\end{figure}
-Our goal is to learn how to ground language to task descriptions represented as MDP reward functions indirectly from demonstrations of the tasks being carried out in the low-level action space. To perform this learning, we use a form of IRL to identify the set of likely tasks from each demonstration and use the identified tasks and their probability to perform weakly supervised learning of the language model. Once the grounding between language and tasks is learned, an agent can receive a command, ground it into a reward function, and then compute a policy to follow to complete the task using any ``off-the-shelf'' MDP planning algorithm.
 
-To ground language to reward functions and perform IRL from demonstration to those possible reward functions, we introduce a generative model of factored reward functions, behavior, and language. More specifically, we assume that any {\em task} that a person may request can be represented as a reward function and corresponding terminal states (if it is a terminating task) defined with OO-MDP propositional functions. 
-Everything about the OO-MDP, except the task, is assumed to be known by the agent. Our generative model, shown in Figure \ref{fig:tm}, consists of an input initial state ($S$), a set of lifted tasks ($L$), a set of grounded tasks ($T$), a set of object-binding constraints ($C$), a set of behavior demonstrations/trajectories ($B$), and a language model that produces natural language commands and is dependent on the lifted task and binding constraints. A lifted task specifies the kinds of problems the agent can solve with propositional functions, but leaves the OO-MDP objects on which it operates as free variables; a grounded task binds a lifted task's free variables to specific objects in the world, thereby producing a well-defined decision-making problem; object-binding constraints specify the set of possible properties of the grounded task's bound objects that a user might refer to in language; a behavior trajectory is a sequence of states and actions taken by the agent. Note that the specific language model is a parameter of our overall model and learning algorithm. In the following section, we will discuss two grammar-free models that we successfully used to ground several tasks. In the rest of this section, we will describe these various components and their probability distributions in more detail. As a running example, we will refer to the example Cleanup World state shown in Figure \ref{fig:ef}. An example training instance in this example environment is the English command ``take the yellow chair to the red room'' which would be paired with the low-level action sequence $SSSEEEENNWNNESSS$, where $N, S, E, W$ stand for north, south, east, and west, respectively. Using IRL, the most likely task would be one that satisfies the goal ${\tt blockInRoom}(c_1, r_1)$, which has many possible object-binding constraints, such as ${\tt isRed}(r_1)$.
-
-
-%\stnote{Can you provide an example of a training example?  Here's my stab:  ``For example, the robot learns from language, such as ``Move the blue block to the beige room'' paired with low-level action sequences such as NNSSEESSS.  We use IRL to map between the low-level action sequence and abstract reward functions, such as ``moveBlock(room1, room2).''''  (I know this example isn't using the right notation but I thought I would take a stab and then James can fix up the notation if you like the idea.  I think it would help to make the learning problem more concrete sooner before going into all the details.  And also emphasize that it's hard.)}
-
+\section{Execution and Learning}
+\label{sec:el}
 \begin{figure}[tbp]
 \begin{center}
 \includegraphics[width=0.7\columnwidth]{images/exampleFloor}
@@ -219,6 +286,64 @@ Everything about the OO-MDP, except the task, is assumed to be known by the agen
 \label{fig:ef}
 \end{center}
 \end{figure}
+In this section we describe the overall execution and learning process of our approach. In the next section we will detail our generative model of tasks, behavior, and language that enables these processes. As a running example, consider the initial state of our {\em Cleanup World} domain shown in Figure~\ref{fig:ef}. Cleanup World (like Sokoban \cite{junghanns1997sokoban}) is a 2D grid world of various rooms connected by open doors. Rooms can also contain ``blocks'' that can be moved around. The robot moves using north-south-east-west actions. Moving into a location containing a block causes the block to move in the direction the agent is moving. If a wall or other item is in its immediate path, neither the agent nor the block moves. Cleanup World is represented as an OO-MDP consisting of four object classes: ${\tt ROBOT}$, ${\tt BLOCK}$, ${\tt ROOM}$, and ${\tt DOORWAY}$.
+The propositional functions defined for the OO-MDP include ${\tt robotInRoom}({\tt ROBOT}, {\tt ROOM})$, and ${\tt blockInRoom}({\tt BLOCK}, {\tt ROOM})$, as well as propositional functions to indicate the color and type of rooms and blocks (\emph{e.g.}, ${\tt roomIsOrange}({\tt ROOM})$, ${\tt blockIsStar}({\tt BLOCK})$).
+
+\begin{figure}
+        \centering
+        \begin{subfigure}[b]{\columnwidth}
+                \includegraphics[width=\textwidth]{images/executeFlow}
+                \caption{A flow chart of command execution.}
+                \label{fig:execute}
+        \end{subfigure}%
+        \\
+        \begin{subfigure}[b]{\columnwidth}
+                \includegraphics[width=\textwidth]{images/trainFlow}
+                \caption{A flow chart of the training process.}
+                \label{fig:learn}
+        \end{subfigure}
+        \caption{Flow charts for command execution and learning.}\label{fig:flow}
+\end{figure}
+
+Figure~\ref{fig:execute} shows a flow chart of the execution process. To illustrate the steps of this process, considering the command ``take the yellow chair to the red room'' being given in the state shown in Figure~\ref{fig:ef}. Using Bayesian inference with the learned model, the most likely task for the state shown in Figure\ref{fig:execute} is the goal condition ${\tt blockInRoom}(b_1, r_1)$, because the command uses words for taking an object to a location, and because the selected objects satisfy the properties ${\tt roomIsRed}(r_1) \land {\tt blockIsYellow}(b_1) \land {\tt blockIsChair}(b_1)$, which would have a high probability of generating the English words in the command. Once the most likely task has been inferred, a standard plan and control problem is instantiated, in which the robot uses a planning algorithm to generate a policy and follows the policy in a closed loop fashion.\footnote{The policy does not have to be complete and can invoke replanning if it is more efficient to do so.} Our approach is agnostic to the planning algorithm and can use any ``off-the-shelf'' planning algorithm appropriate for the domain, allowing our approach to scale to a large variety of robotics domains as long as enough of the state is observable to perform task grounding.
+
+Figure~\ref{fig:learn} shows a flow chart of the learning process from taking a dataset of demonstrations paired with commands and learning the parameters of a language model that ground language to latent task descriptions. Let us return to the previous command ``take the yellow chair to the red room'' except this time in the role of a training instance paired with a demonstration started in the initial state shown in Figure~\ref{fig:ef} and following the action sequence $SSSEEEENNWNNESSS$, where $N, S, E, W$ stand for north, south, east, and west, respectively, resulting in the completion of the command's task. From this demonstration, inverse reinforcement learning (IRL) infers the probability that each possible task in the environment of the demonstration was the task being completed by the demonstration. In particular, the task with the goal ${\tt blockInRoom}(b_1, r_1)$ will have a very high probability compared to other tasks. This task has many possible descriptions based on the properties of the objects $b_1$ and $b_2$ to which language could be ground. In particular, one such task description is ${\tt blockInRoom}(b_1, r_1) {\tt roomIsRed}(r_1) \land {\tt blockIsYellow}(b_1) \land {\tt blockIsChair}(b_1)$. The set of all possible task descriptions for all tasks, weighted by the probability of their task being the intended one, form a set of weakly supervised labels for the training command and are used with a weakly supervised learning algorithm to train the language model parameters.
+
+Our approach can easily use different semantic language models. In this work, we investigate two language models: a Bag-of-Words mixture model and
+the IBM Model 2 used in statistical machine-translation~\cite{brown90,brown93} and use expectation maximization~\cite{dempster77} for training them with the weakly labeled commands. While we suspect that other language
+models that incorporate grammatical knowledge might yield better
+performance and robustness, an advantage of these grammar-free models
+is that they do not require any additional corpus training and can be
+used with our task and behavior model as is.
+
+
+
+\section{The Generative Model}
+\begin{figure}[tbp]
+\begin{center}
+\includegraphics[width=.7\columnwidth]{images/taskModel}
+\caption{The generative task model, with arrows indicating conditional probabilities. $S$ is the current state and is an input to the model. $L$ is the lifted task, which specifies the kind of problem to solve. $T$ is the grounded tasks, which binds specific objects to the lifted task making for a well defined problem to solve. $B$ is the behavior the agent follows to complete task $T$. $C$ is the object-binding constraints, which specify properties about the bound objects in $T$ that a user might refer to in their language to specify the objects. The language model is a parameter of our overall generative model.}
+% An arrow from $X\rightarrow Y$ indicates that $Y$'s probability distribution is conditionally dependent on $X$.}
+\label{fig:tm}
+\end{center}
+\end{figure}
+Our generative model of tasks, behavior, and language used for learning and command execution is shown in Figure~\ref{fig:tm}. It consists of an input initial state ($S$), a set of lifted tasks ($L$), a set of grounded tasks ($T$), a set of object-binding constraints ($C$), a set of behavior demonstrations/trajectories ($B$), and a language model that produces natural language commands and is dependent on the lifted task and binding constraints. A lifted task specifies the kinds of problems the agent can solve with propositional functions, but leaves the OO-MDP objects on which it operates as free variables; a grounded task binds a lifted task's free variables to specific objects in the world, thereby producing a well-defined decision-making problem; object-binding constraints specify the set of possible properties of the grounded task's bound objects that a user might refer to in language; a behavior trajectory is a sequence of states and actions taken by the agent. In the rest of this section, we will describe these various components and their probability distributions in more detail. 
+%We will refer to the same running example shown in Figure~\ref{fig:ef} discussed previously. 
+Note that the specific language model is a parameter of our overall model and learning algorithm, but we will describe two grammar-free models we investigated in this work: a Bag-of-Words mixture model and
+the IBM Model 2 used in statistical machine-translation~\cite{brown90,brown93}. 
+
+
+
+
+%Our goal is to learn how to ground language to task descriptions represented as MDP reward functions indirectly from demonstrations of the tasks being carried out in the low-level action space. To perform this learning, we use a form of IRL to identify the set of likely tasks from each demonstration and use the identified tasks and their probability to perform weakly supervised learning of the language model. Once the grounding between language and tasks is learned, an agent can receive a command, ground it into a reward function, and then compute a policy to follow to complete the task using any ``off-the-shelf'' MDP planning algorithm.%
+
+%To ground language to reward functions and perform IRL from demonstration to those possible reward functions, we introduce a generative model of factored reward functions, behavior, and language. More specifically, we assume that any {\em task} that a person may request can be represented as a reward function and corresponding terminal states (if it is a terminating task) defined with OO-MDP propositional functions. 
+%Everything about the OO-MDP, except the task, is assumed to be known by the agent. Our generative model, shown in Figure \ref{fig:tm}, consists of an input initial state ($S$), a set of lifted tasks ($L$), a set of grounded tasks ($T$), a set of object-binding constraints ($C$), a set of behavior demonstrations/trajectories ($B$), and a language model that produces natural language commands and is dependent on the lifted task and binding constraints. A lifted task specifies the kinds of problems the agent can solve with propositional functions, but leaves the OO-MDP objects on which it operates as free variables; a grounded task binds a lifted task's free variables to specific objects in the world, thereby producing a well-defined decision-making problem; object-binding constraints specify the set of possible properties of the grounded task's bound objects that a user might refer to in language; a behavior trajectory is a sequence of states and actions taken by the agent. Note that the specific language model is a parameter of our overall model and learning algorithm. In the following section, we will discuss two grammar-free models that we successfully used to ground several tasks. In the rest of this section, we will describe these various components and their probability distributions in more detail. As a running example, we will refer to the example Cleanup World state shown in Figure \ref{fig:ef}. An example training instance in this example environment is the English command ``take the yellow chair to the red room'' which would be paired with the low-level action sequence $SSSEEEENNWNNESSS$, where $N, S, E, W$ stand for north, south, east, and west, respectively. Using IRL, the most likely task would be one that satisfies the goal ${\tt blockInRoom}(c_1, r_1)$, which has many possible object-binding constraints, such as ${\tt isRed}(r_1)$.
+
+
+%\stnote{Can you provide an example of a training example?  Here's my stab:  ``For example, the robot learns from language, such as ``Move the blue block to the beige room'' paired with low-level action sequences such as NNSSEESSS.  We use IRL to map between the low-level action sequence and abstract reward functions, such as ``moveBlock(room1, room2).''''  (I know this example isn't using the right notation but I thought I would take a stab and then James can fix up the notation if you like the idea.  I think it would help to make the learning problem more concrete sooner before going into all the details.  And also emphasize that it's hard.)}
+
+
 \subsection{Lifted Tasks}
 The set of possible lifted task definitions is provided by a designer and represents the kinds of tasks an agent could conceivably carry out in an environment. Specifically, each lifted task is a factored reward function defined as a logical expression of OO-MDP propositional functions with the parameters of the propositional functions set to free variables. In our example environment (Figure \ref{fig:ef}), a reward function for the task of taking a ``block'' object (\emph{e.g.}, chair) to a room is:
 \begin{equation}
@@ -231,7 +356,8 @@ The set of possible lifted task definitions is provided by a designer and repres
 where $s'$ is the outcome state for the agent after taking action $a$ in state $s$, ${\tt blockInRoom}^{s'}$ is a propositional function evaluated in state $s'$, $?b$ is a free variable that can be grounded to any movable block object in the environment, and $?r$ is a free variable that can be grounded to any room in the environment. 
 If a task is goal directed, then the reward function will also be paired with a similar set of termination conditions.
 
-The prior probability distribution on the set of lifted tasks is assumed to be uniform over the set of lifted tasks that are {\em permissible} in an input state. A lifted task is permissible in an input state if there exists at least one object of each object class required by the free variables in the lifted task. For example, if the input state has no block objects present, then lifted task \ref{eq:liftedrf} is {\em not} permissible in the state. Using lifted tasks enables our system to generalize its learned knowledge across different environments because it infers an abstract description of the person's goals that is not specific to the low-level action sequence that it must observe or generate.
+The prior probability distribution on the set of lifted tasks is assumed to be uniform over the set of lifted tasks that are {\em permissible} in an input state. A lifted task is permissible in an input state if there exists at least one object of each object class required by the free variables in the lifted task. For example, if the input state has no block objects present, then lifted task \ref{eq:liftedrf} is {\em not} permissible in the state. 
+%Using lifted tasks enables our system to generalize its learned knowledge across different environments because it infers an abstract description of the person's goals that is not specific to the low-level action sequence that it must observe or generate.
 
 \subsection{Grounded Tasks}
 A grounded task ($T$) is dependent on the lifted task and input state and is an assignment of objects in the input state to each of the free variables in the lifted task. For example, given the input state shown in Figure \ref{fig:ef}, an object assignment to lifted task \ref{eq:liftedrf} that represents the task of the robot taking the yellow chair to the red room is $?b:=c_1$ and $?r:=r_1$. The probability distribution of grounded tasks is uniform over the set of possible variable assignments for the lifted task. In goal-directed tasks, only tasks that are not satisfied in the initial state are considered.
@@ -247,12 +373,12 @@ For example, the command ``take the yellow chair to the red room,'' indicates th
 The probability distribution of object constraints given a grounded task, lifted task, and input state is uniform across the set of possible additional logical constraints that are true in the input state for the given variable assignments in the grounded task. For example, if $?b$ is assigned to $c_1$ in the grounded task, ${\tt isYellow}(?b)$, is a possible constraint since it is true in the initial state for $c_1$, but ${\tt isBlue}(?b)$ is not.
 
 \subsection{Behavior}
-A \emph{behavior trajectory} is a sequence of state--action pairs that the agent can experience from an input state and is conditionally dependent on the grounded task and input state. The conditional probability of the behavior, given the task, is formulated by treating each action selection in each state of the trajectory as an independent event and by defining the action-selection probability distribution as a Boltzmann distribution over the optimal Q-values for the task---similar to the likelihood of a trajectory in maximum likelihood inverse reinforcement learning~\cite{babes11}. The optimal Q-values are computed using any off-the-shelf MDP planning algorithm. The probability of any behavior trajectory $b$ (of length $N$) given task $t$ is defined as 
+A \emph{behavior trajectory} is a sequence of state--action pairs that the agent can experience from an input state and is conditionally dependent on the grounded task and input state. The conditional probability of the behavior, given the task, is formulated by treating each action selection in each state of the trajectory as an independent event and by defining the action-selection probability distribution as a noisy version of the policy computed by an ``off-the-shelf'' planning algorithm. Following maximum likelihood inverse reinforcement learning~\cite{babes11}, we use A Boltzmann distribution over the optimal Q-values as the noisy policy in this work. The probability of any behavior trajectory $b$ (of length $N$) given task $t$ is defined as 
 \begin{equation}
 \label{eq:trajProb}
 \Pr(b | t) = \prod^N_i \pi_t(s_i, a_i), 
 \end{equation}
-where $(s_i, a_i)$ is the $i$th state--action pair in behavior trajectory $b$, and $\pi_t(s_i, a_i)$ is the Boltzmann policy distribution under task $t$ (the probability of taking action $a_i$ in state $s_i$ when the task is task $t$). 
+where $(s_i, a_i)$ is the $i$th state--action pair in behavior trajectory $b$, and $\pi_t(s_i, a_i)$ is the noisy policy distribution under task $t$ (the probability of taking action $a_i$ in state $s_i$ when the task is task $t$). 
 
 %Given the optimal Q-values for an MDP, the Boltzmann policy distribution is defined as
 %\begin{equation}
@@ -292,7 +418,7 @@ The parameters of the BoW model are the conditional probabilities that any word 
 \end{equation}
 where $\theta_{vw}$ is a parameter specifying the conditional probability that the natural language word $w$ is generated given semantic component $v$, and $K(w, e)$ is the number of times that word $w$ appears in command $e$.
 
-A limitation of the BoW models is that, because they does not account for word order or structure, they cannot disambiguate which words in a command apply to which object. For example, for the command ``take the blue chair to the red room,'' BoW would not be able to disambiguate whether ``blue'' refers to the chair or the room (and similarly for the word ``red'').
+%A limitation of the BoW model is that, because it does not account for word order or structure, it cannot disambiguate which words in a command apply to which object. For example, for the command ``take the blue chair to the red room,'' BoW would not be able to disambiguate whether ``blue'' refers to the chair or the room (and similarly for the word ``red'').
 
 %The Bag-of-Words (BoW) language model 
 %is similar to the topic modeling approach used by McCallum \shortcite{McCallum:1999vn}, in which words are distributed according to a mixture of topics and a document is generated by selecting a topic with some mixture weight, generating a word from the topic's word distribution, and then repeating the process. In our BoW model (Figure~\ref{fig:bowm}), we replace the role of topics with semantic components of the lifted task and object binding constraints, generating words as a mixture model of those semantic components. 
@@ -394,7 +520,7 @@ When the task and behavior model is paired with the BoW language model, we use a
 %\normalsize
 %Parameters are then updated according to $\theta_{vw} = \frac{\hat{N}(v, w)}{\hat{N}(v)}$.
 
-In classic IBM2 parameter learning, EM is used on a training dataset consisting of pairs of natural language expressions (\emph{e.g.}, French and English), often with a ``bake-in'' period, during which only translation parameters are updated, followed by a normal learning phase during which translation parameters and alignment parameters are updated. In our dataset, we have pairs of trajectory and natural language commands, so we use a modified version of the classic IBM2 EM algorithm where we convert each trajectory into a set of possible machine-language commands weighted by the probability that each machine-language command would be generated given the trajectory. Then, the standard IBM2 EM update rules are performed on the pairs of machine-language and natural language commands, except the contribution of each pair is weighted by the probability of that machine-language command having been generated by its associated trajectory. The probability of any machine-language command ($m$) given a trajectory ($b$) and initial state ($s$) is
+In classic IBM2 parameter learning, EM is used on a training dataset consisting of pairs of natural language expressions (\emph{e.g.}, French and English), often with a ``bake-in'' period, during which only translation parameters are updated, followed by a normal learning phase during which translation parameters and alignment parameters are updated. We follow the same approach here, except in our case, we have pairs of machine language commands and English commands, and the contribution of the expectation of machine language commands is weighted by the probability of being generated given the demonstration (see Section~\ref{sec:el}). The probability of any machine-language command ($m$) given a trajectory ($b$) and initial state ($s$) is
 
 {
 \footnotesize
@@ -406,17 +532,30 @@ In classic IBM2 parameter learning, EM is used on a training dataset consisting 
 \end{equation}
 }
 
+
+%In our dataset, we have pairs of trajectory and natural language commands, so we use a modified version of the classic IBM2 EM algorithm where we convert each trajectory into a set of possible machine-language commands weighted by the probability that each machine-language command would be generated given the trajectory. Then, the standard IBM2 EM update rules are performed on the pairs of machine-language and natural language commands, except the contribution of each pair is weighted by the probability of that machine-language command having been generated by its associated trajectory. The probability of any machine-language command ($m$) given a trajectory ($b$) and initial state ($s$) is%
+
+%{
+%\footnotesize
+%\begin{equation}
+%\vspace{-1em}
+%\begin{split}
+%& \Pr(m | s, b) = \\ & \frac{\sum_{l,t,c} \Pr(l | s) \Pr(t | s, l) \Pr(b | s, t) \Pr(c | s, l, t) \Pr(m | l, c)}{\sum_{l,t} \Pr(l | s) \Pr(t | s, l) \Pr(b | s, t)}.
+%\end{split}
+%\end{equation}
+%}
+
 \noindent A similar approach could be used for training the parameters of other language models.
 
 \section{Experimental Results}
 To empirically validate our approach, we tested our model on datasets that collected example language for the ``Cleanup World'' from two different sources: an Amazon Mechanical Turk (AMT) user study, and an ``expert'' who is an author of this paper. Different experiments were run for the AMT language source and the expert source. In the AMT study, we asked users to provide example commands for a smaller range of tasks, but used more abstract object representations and unusual color choices to elicit more variety in the command descriptions. In the expert study, we evaluated a larger range of tasks and environments but with fairly clean expressions of the language. The details of the various experiments run with each study are explained in the following subsections. We then also show how we can take the language model learned from the AMT study, recreate the Cleanup World domain on an actual mobile robot, and successfully transfer the learned model so that the robot correctly interprets the commands, even though the robot has a different action space than the simulated robot used for training.
 
-Cleanup World (like Sokoban \cite{junghanns1997sokoban}) is a 2D grid world of various rooms connected by open doors. Rooms can also contain ``blocks'' that can be moved around. The robot moves using north-south-east-west actions. Moving into a location containing a block causes the block to move in the direction the agent is moving. If a wall or other item is in its immediate path, neither the agent nor the block moves. Cleanup World is represented as an OO-MDP consisting of four object classes: ${\tt ROBOT}$, ${\tt BLOCK}$, ${\tt ROOM}$, and ${\tt DOORWAY}$. %The agent is defined by $x$ and $y$ position attributes. Blocks are defined by position attributes, a color attribute, and a shape attribute. The room and door objects are defined by attributes describing their rectangular bounding box (top, left, bottom, right), and the room object also has a color attribute. 
-The propositional functions defined for the OO-MDP include ${\tt robotInRoom}({\tt ROBOT}, {\tt ROOM})$, and ${\tt blockInRoom}({\tt BLOCK}, {\tt ROOM})$, as well as propositional functions to indicate the color and type of rooms and blocks (\emph{e.g.}, ${\tt roomIsOrange}({\tt ROOM})$, ${\tt blockIsStar}({\tt BLOCK})$).
+%Cleanup World (like Sokoban \cite{junghanns1997sokoban}) is a 2D grid world of various rooms connected by open doors. Rooms can also contain ``blocks'' that can be moved around. The robot moves using north-south-east-west actions. Moving into a location containing a block causes the block to move in the direction the agent is moving. If a wall or other item is in its immediate path, neither the agent nor the block moves. Cleanup World is represented as an OO-MDP consisting of four object classes: ${\tt ROBOT}$, ${\tt BLOCK}$, ${\tt ROOM}$, and ${\tt DOORWAY}$. %The agent is defined by $x$ and $y$ position attributes. Blocks are defined by position attributes, a color attribute, and a shape attribute. The room and door objects are defined by attributes describing their rectangular bounding box (top, left, bottom, right), and the room object also has a color attribute. 
+%The propositional functions defined for the OO-MDP include ${\tt robotInRoom}({\tt ROBOT}, {\tt ROOM})$, and ${\tt blockInRoom}({\tt BLOCK}, {\tt ROOM})$, as well as propositional functions to indicate the color and type of rooms and blocks (\emph{e.g.}, ${\tt roomIsOrange}({\tt ROOM})$, ${\tt blockIsStar}({\tt BLOCK})$).
 
-In both studies, the Boltzmann policy parameter $\tau$ was set to $0.005$ and performance was measured using leave-one-out (LOO) cross validation on the collected training examples; a prediction was considered correct if the interpretation of the reward function resulted in behavior that achieved the actual goal. 
+In both studies, the Boltzmann policy parameter $\tau$ was set to $0.005$. Since we knew the task the training commands were meant to describe, performance was measured using leave-one-out (LOO) cross validation on the collected training examples; a prediction was considered correct if the interpretation of the reward function resulted in behavior that achieved the actual goal. 
 
-For a baseline, we compared to a model that grounds language to actions rather than tasks. Because the order of the actions is important, we always paired the baseline with the IBM2 language model. When training the IBM2 model, the action sequence in the demonstration is converted into a machine-language sentence in which each word is the name of the action. Note that the action-grounding learning problem is in some sense easier than training the task model, since the action sequence is always directly observed in the demonstration, whereas in our task grounding model, IRL is needed to perform weakly supervised learning. Inferring an action sequence from a command would generally require searching the action sequence space and finding the most likely sequence from the command or at least using it to bias a planning algorithm's search, similar to the work of \citet{chen11}. However, we simplify this inference problem greatly by allowing the action-grounding model to exploit our task model. Specifically, when inferring an action sequence for a command, the only valid action sequences permitted are those that solve one of the possible grounded tasks; in our work, the robot always chooses the most likely of the possible sequences.
+For a baseline, we compared to a model that grounds language to actions rather than tasks. Because the order of the actions is important, we always paired the baseline with the IBM2 language model. When training the IBM2 model, the action sequence in the demonstration is converted into a machine-language sentence in which each word is the name of the action. Note that the action-grounding learning problem is in some sense easier than training the task model, since the action sequence is always directly observed in the demonstration, whereas in our task grounding model, IRL is needed to perform weakly supervised learning. Inferring an action sequence from a command would generally require searching the action sequence space and finding the most likely sequence from the command or at least using it to bias a planning algorithm's search, similar to the work of \citet{chen11}. However, we simplify this inference problem greatly by allowing the action-grounding model to exploit our task model. Specifically, when inferring an action sequence for a command, the only valid action sequences permitted are those that solve one of the possible grounded tasks; the baseline always chooses the most likely of the possible sequences.
 
 
 
@@ -437,13 +576,13 @@ In the AMT study, we considered two different lifted tasks: the robot going to a
 %We chose to use ambiguous colors for the rooms in our visual representation to elicit different verbalizations for the different colors. 
 To prevent contamination of the commands we received, we never provided users with any example commands. 
 
-After removing sentences that did not follow the instructions or that did not describe the task in any capacity, we obtained a dataset of 240 instances. The goal of our work is to be able to give autonomous agents high-level commands that leave the details of how to complete the task as a problem for the agent to solve. However, most of the natural language commands we received included some high-level details of the path the robot followed (\emph{e.g.}, subgoals), rather than only describing the task goal. 
+After removing sentences that did not follow the instructions or were provided by users who did not understand the  labeling task we were asking them to perform, we obtained a dataset of 240 instances. The goal of our work is to be able to give autonomous agents high-level commands that leave the details of how to complete the task as a problem for the agent to solve. However, most of the natural language commands we received included some high-level details of the path the robot followed (\emph{e.g.}, subgoals), rather than only describing the task goal. 
 For example, one such command was ``go through center opening into beige enclosure and get behind star and push it into opening of orange enclosure.'' 
 Although this data is interesting because it tests our model's performance on language that it was not intended to model, a dataset that better reflects the problem we were trying to solve is also useful for comparison. Therefore, in addition to this source dataset, we  created a simplified version that omits the text that is extraneous to the task description. 
 For instance, the previous example became: ``go through center opening and get behind star and push it into opening of orange enclosure.'' 
-The average command lengths (in words) were $13.57$ and $8.87$ in the original and simplified datasets, respectively.
+The average command lengths (in words) were $13.57$ and $8.87$ in the original and simplified datasets, respectively. We tested results on both the original dataset and this simplified version.
 
-In the training data we gathered from users, the room layout was always the same; however, one of the advantages of our approach is that commands can generalize to novel environments. To demonstrate the ability for our approach to generalize to new environments, we created a third dataset in which we used LOO cross validation for the language on the original dataset and tested each command on three different novel environments. Note that these different environments were not merely a different spatial arrangement of the rooms compared to the training dataset; the environments also had different initial conditions for the agent not seen in the training environment, which results in a different set of propositional functions being true in the initial state. As a consequence, our task model could perform worse if, during training, it overfit the object-binding constraints to inappropriate features. We refer to this dataset as the {\em novel environment} (NE) dataset.
+In the training data we gathered from users, the room layout was always the same; however, one of the advantages of our approach is that commands can generalize to novel environments. To demonstrate the ability for our approach to generalize to new environments, we created a third dataset in which we used LOO cross validation for the language on the original (unmodified) dataset and tested each command on three different novel environments. Note that these different environments were not merely a different spatial arrangement of the rooms compared to the training dataset; the environments also had different initial conditions for the agent not seen in the training environment, which results in a different set of propositional functions being true in the initial state. As a consequence, our task model could perform worse if, during training, it overfit the object-binding constraints to inappropriate features. We refer to this dataset as the {\em novel environment} (NE) dataset.
 
 %In our analysis, we compare performance on both the original dataset and the simplified version. 
 % SM can we give the average number of words per command in each of the datasets?
@@ -625,11 +764,26 @@ such as Synchronous Context-Free Grammars \cite{Wu1997}.
 \section{Conclusion}
 We presented a novel generative task model that expresses tasks as factored MDP reward functions, and to which natural language commands can be grounded. This generative task model is flexible and can be combined with different language models. We further showed how our model enables task groundings to be learned indirectly from example demonstrations by using IRL to weakly supervise the language model learning. Grounding natural language commands to MDP tasks rather than actions is a powerful approach because it allows people to provide robots high-level commands without specifying the details of how to complete the tasks. This task grounding enables the robot to correctly follow a command in a variety of environments, including environments it has not previously encountered, and adapt to noise in the environment, as shown in our results. In contrast, grounding language to action sequences fails to generalize to novel environments. Moreover, grounding language to tasks allows the learned model to be transferred to different robots that have different actions spaces than the robot used to train the model, which was demonstrated by transferring the learned language model onto a physical robot with a different action space than the action space of the simulated robot used in training.
 
-In this work, we investigated two grammar--free language models that can be combined with our task model: a Bag-of-Words (BoW) mixture model and IBM Model 2 (IBM2). %that treats semantic inference as a machine-translation problem. 
-We empirically validated our approach with these two language models on an expert-developed dataset with a variety of tasks and a dataset in which commands were provided by users of the Amazon Mechanical Turk. We found that when commands are simple and can be fully represented by the words that are present in the command, both the BoW model and IBM2 are effective. However, when the correct interpretation of the commands depends more heavily on the structure of the sentences, IBM2 is more effective than BoW. Grammar-free models have the advantage that they do not require a corpus for training the grammar model and they were sufficient for successfully grounding the language to tasks in our test domain. However, we imagine there are other domains in which more complex grammar-based language models could provide better results. Because our task and behavior model is modular, we believe other language models could be incorporated relatively easily.
+There are a number of directions for future work including an investigation of grammar-based language models, more complex robotics tasks, more sophisticated task representations, grounding under partial observability, and commands that include subgoals. The grammar-free models have the advantage that they do not require a corpus for training the grammar model and they were sufficient for successfully grounding the language to tasks in our test domain. However, we imagine there are other domains in which more complex grammar-based language models could provide better results. 
 
-In the future, we will extend this approach to operate on a wider variety of task types. For instance, logical quantifiers such as ``for all'' and ``there exists'' can be used with the OO-MDP propositional functions to define more expressive tasks; reward functions that include penalties for certain behaviors and grounding to continuing tasks can also be incorporated. %and can be incorporated into our language models by treating quantifiers as another semantic component (for the BoW model) or as a machine-language word (for IBM2). 
-In complex environments, planning for a task can be difficult and expensive, so another future direction is to incorporate into our model the ability for a command to specify subtasks, which would make the overall planning problem more tractable for the robot. 
+In this work, our robotics task was fairly simply to facilitate gathering commands from an AMT study. However, because our approach is agnostic to the planning algorithm used in execution and learning, and because only the task description (rather than the state space) needs to be symbolic, we believe our approach can scale to a variety of more complex robotics tasks as long as enough of state is observable to perform task grounding. For example, we believe this work will scale to robotics domains like Forklift manipulation~\cite{teller2010voice}.
+
+Currently, our tasks are described as a logical expression over a set of free variables. In the future, this could be extended to include first order logic quantifiers such as ``for all.'' Because tasks are represented with reward functions, our approach could also incorporate continuing task, rather than goal-directed tasks.
+
+Task grounding requires the agent to know about the state of the objects a human refers to in their command. In the future, it would be useful to relax this constraint so that the robot can infer the existence of unobserved objects in the world being described. This functionality might be incorporated by adding to the generative model the generation of additional objects not observed in the input state.
+
+Finally, although our ultimate goal is for the robot to fully solve the tasks itself to remove the burden from the human, in particularly challenging tasks, it may useful to allow the human to specify subgoals that simplify the planning task for the robot.
+
+
+%In this work, we investigated two grammar--free language models that can be combined with our task model: a Bag-of-Words (BoW) mixture model and IBM Model 2 (IBM2). %that treats semantic inference as a machine-translation problem. 
+%Grammar-free models have the advantage that they do not require a corpus for training the grammar model and they were sufficient for successfully grounding the language to tasks in our test domain. However, we imagine there are other domains in which more complex grammar-based language models could provide better results. Because our task and behavior model is modular, we believe other language models could be incorporated relatively easily.
+
+%We empirically validated our approach with these two language models on an expert-developed dataset with a variety of tasks and a dataset in which commands were provided by users of the Amazon Mechanical Turk. We found that when commands are simple and can be fully represented by the words that are present in the command, both the BoW model and IBM2 are effective. However, when the correct interpretation of the commands depends more heavily on the structure of the sentences, IBM2 is more effective than BoW. Grammar-free models have the advantage that they do not require a corpus for training the grammar model and they were sufficient for successfully grounding the language to tasks in our test domain. However, we imagine there are other domains in which more complex grammar-based language models could provide better results. Because our task and behavior model is modular, we believe other language models could be incorporated relatively easily.
+
+%An advantage of our approach is that tasks can be represented symbolically, while the environment is non-symbolic, and the planning algorithm used in execution and IRL can be adapted to the domain. As a consequence, we believe our approach will scale to more complex robotics tasks than those tested in this work as long as enough of the state is observable to perform task grounding. For example, we believe this work will scale to robotics domains like the Forklift domain and Cobot office assistant and we will instigate these more complex domains in the future.
+
+%In the future, we will extend this approach to operate on a wider variety of task types. For instance, logical quantifiers such as ``for all'' and ``there exists'' can be used with the OO-MDP propositional functions to define more expressive tasks; reward functions that include penalties for certain behaviors and grounding to continuing tasks can also be incorporated. Future work can also incorporate %and can be incorporated into our language models by treating quantifiers as another semantic component (for the BoW model) or as a machine-language word (for IBM2). 
+%In complex environments, planning for a task can be difficult and expensive, so another future direction is to incorporate into our model the ability for a command to specify subtasks, which would make the overall planning problem more tractable for the robot. 
 
 %Finally, while we chose to use grammar-free language models because they require little background knowledge and can be easily trained from simple datasets of commands and demonstrations, one could also combine a grammar-based language model with our task model and learning approach.  Comparing the performance of grammar-based language models to our current grammar-free models will give important insights into when each approach may be appropriate.
 
@@ -642,8 +796,8 @@ In complex environments, planning for a task can be difficult and expensive, so 
 %\item Future: incorporate commands that specify subtasks
 %\end{itemize}
 
-%\section{Acknowledgments}
-%We would like to thank Eugene Charniak who suggested IBM Model 2 for this work.
+\section{Acknowledgments}
+We would like to thank Eugene Charniak who suggested IBM Model 2 for this work.
 
 
 \bibliography{commands} 
