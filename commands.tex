@@ -39,29 +39,25 @@
 % PDFINFO for PDFLATEX
 % Uncomment and complete the following for metadata (your paper must compile with PDFLATEX)
 \pdfinfo{
-   /Author (James MacGlashan, Monica Babe\c{s}-Vroman, Marie desJardins,
- Michael Littman, Smaranda Muresan, Shawn Squire, Stefanie Tellex,
- Dilip Arumugam, and Lei Yang)
-   /Title  (Grounding English Commands to Reward Functions)
-   /CreationDate (D:20150405120000)
-   /Subject (Learning to Plan)
-   /Keywords (Reinforcement Learning; Transfer Learning; Natural Language)
+/Title  (Grounding English Commands to Reward Functions)
+/Author (James MacGlashan, Monica Babes-Vroman, Marie desJardins, Michael L. Littman, Smaranda Muresan, Shawn Squire, Stefanie Tellex, Dilip Arumugam, Lei Yang)
+/CreationDate (D:20150405120000)
+/Subject (Robots)
+/Keywords (Reinforcement Learning;Transfer Learning;Natural Language)
 }
 
 
-
-
 \title{Grounding English Commands to Reward Functions}
-%\author{James MacGlashan$^*$
-%\and Monica Babe\c{s}-Vroman$^+$
-%\and Marie desJardins$^{\ddagger}$
-%\and Michael Littman$^*$
-%\and Smaranda Muresan$^{\S}$ 
-%\and Shawn Squire$^{\ddagger}$
-%\and Stefanie Tellex$^*$
-%\and Dilip Arumugam$^*$
-%\and Lei Yang$^\dagger$
-%}
+\author{James MacGlashan$^*$
+\and Monica Babe\c{s}-Vroman$^+$
+\and Marie desJardins$^{\ddagger}$
+\and Michael L. Littman$^*$
+\and Smaranda Muresan$^{\S}$ 
+\and Shawn Squire$^{\ddagger}$
+\and Stefanie Tellex$^*$
+\and Dilip Arumugam$^*$
+\and Lei Yang$^\dagger$
+}
 
 
 
@@ -97,12 +93,12 @@ space than the action space used during training.
 \IEEEpeerreviewmaketitle
 
 \section{Introduction}
-%\blfootnote{$^*$ Computer Science Department, Brown University\\
-%$^+$ Computer Science Department, Rutgers University\\
-%$\ddagger$ Department of Computer Science and Electrical Engineering, University of Maryland, Baltimore County\\
-%$^{\S}$ Center for Computational Learning Systems, Columbia University\\
-%$^\dagger$ School of Software, Tsinghua University
-%}
+\blfootnote{$^*$ Computer Science Department, Brown University\\
+$^+$ Computer Science Department, Rutgers University\\
+$\ddagger$ Department of Computer Science and Electrical Engineering, University of Maryland, Baltimore County\\
+$^{\S}$ Center for Computational Learning Systems, Columbia University\\
+$^\dagger$ School of Software, Tsinghua University
+}
 For robots and other intelligent agents to be useful to the general
 public, they need to be able to autonomously carry out complex
 tasks. However, it is equally important for humans to be able to
@@ -251,8 +247,7 @@ demonstrate that the learned model that was trained on simulated
 data can be transferred to a physical robot with a different action
 space that manipulates blocks in the physical world. The code and
 datasets for 
-this work are freely available online.\footnote{%https://github.com/jmacglashan/commandsToTasks
-Removed for review.}
+this work are freely available online.\footnote{https://github.com/jmacglashan/commandsToTasks}
 
 
 %% Two main datasets were created for our domain; one with clean natural
@@ -902,11 +897,11 @@ for particularly challenging tasks, it may be useful to extend our approach to a
 %\item Future: incorporate commands that specify subtasks
 %\end{itemize}
 
-\section{Acknowledgments}
-Removed for review.
-%This work was supported by collaborative NSF awards \#1065195 and \#1340150.
-%We would like to thank Eugene Charniak,
-%who suggested IBM Model 2 for this work.
+\section*{Acknowledgments}
+%Removed for review.
+This work was supported by collaborative NSF awards \#1065195 and \#1340150.
+We would like to thank Eugene Charniak,
+who suggested IBM Model 2 for this work.
 
 
 \bibliography{commands} 
